@@ -1,0 +1,31 @@
+return {
+	["Currency"] = {
+		["Coins"] = 0,
+	},
+	
+	["Level"] = {
+		["Level"] = 1,
+		["XP"] = 0,
+		["TotalXP"] = 12,
+	},
+	
+	["Other"] = {
+		["TotalPlaytime"] = 1,
+		["GamesPlayed"] = 0,
+		["Losses"] = 0,
+		["Wins"] = 12,
+	},
+
+	["Pets"] = {},
+	["Titles"] = {},
+	["Auras"] = {},
+	
+	["EquippedPets"] = {},
+	["EquippedTitles"] = {},
+	["EquippedAuras"] = {},
+
+	--==================================================
+	-- SYSTEM INTERNAL (DO NOT TOUCH)
+	--==================================================
+	["DataId"] = 0
+} -- return default data
