@@ -1,0 +1,88 @@
+local DataStoreEvents = {}
+
+local ErrorHandler = require(script.Parent.ErrorHandler)
+
+local function FindValue(Player, CurrencyName)
+	if Player:IsA("Player") then
+		for i, AllValues in ipairs(Player:GetDescendants()) do
+			if AllValues.Name == CurrencyName then
+				return AllValues
+			end
+		end
+	end
+end
+
+function DataStoreEvents.AddCurrency(Player, CurrencyName, NewValue)
+	local OurCurrency = FindValue(Player, CurrencyName)
+	
+	if not OurCurrency then
+		ErrorHandler.Error("Currency not found: " .. CurrencyName)
+		return
+	end
+	
+	if OurCurrency:IsA("BoolValue") then
+		OurCurrency.Value = true
+	elseif OurCurrency:IsA("StringValue") then
+		OurCurrency.Value = tostring(NewValue)
+	elseif OurCurrency:IsA("NumberValue") or OurCurrency:IsA("IntValue") then
+		OurCurrency.Value = OurCurrency.Value + OurCurrency
+	end
+	return
+end
+
+function DataStoreEvents.RemoveCurrency(Player, CurrencyName, RemoveAmount)
+	local OurCurrency = FindValue(Player, CurrencyName)
+
+	if not OurCurrency then
+		ErrorHandler.Error("Currency not found: " .. CurrencyName)
+		return
+	end
+
+	if OurCurrency:IsA("BoolValue") then
+		OurCurrency.Value = false
+	elseif OurCurrency:IsA("StringValue") then
+		OurCurrency.Value = ""
+	elseif OurCurrency:IsA("NumberValue") or OurCurrency:IsA("IntValue") then
+		OurCurrency.Value = OurCurrency.Value - OurCurrency
+	end
+	return
+end
+
+function DataStoreEvents.ReturnCurrency(Player, CurrencyName)
+	local OurCurrency = FindValue(Player, CurrencyName)
+	
+	if not OurCurrency then
+		ErrorHandler.Error("Currency not found: " .. CurrencyName)
+		return
+	end
+	
+	return OurCurrency.Value
+end
+
+function DataStoreEvents.SetCurrency(Player, CurrencyName, SetValue)
+	local OurCurrency = FindValue(Player, CurrencyName)
+	
+	if not OurCurrency then
+		ErrorHandler.Error("Currency not found: " .. CurrencyName)
+		return
+	end
+	
+	local Success, Error = pcall(function()
+		OurCurrency.Value = SetValue
+	end)
+	
+	if not Success then
+		ErrorHandler.Error("Error setting currency: " .. Error)
+	end
+	return
+end
+
+function DataStoreEvents.HasEnough(Player, CurrencyName, Amount)
+	local current = DataStoreEvents.ReturnCurrency(Player, CurrencyName)
+	if current then
+		return current >= Amount
+	end
+	return false
+end
+
+return DataStoreEvents
