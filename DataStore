@@ -1,0 +1,140 @@
+-- Services
+local PlayerService = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
+
+-- Module Scripts
+local ErrorHandlerModule = require(script.DONT_CHANGE.ErrorHandler)
+
+-- Config
+local Config = script.Configuration
+local DataTemplate = require(script.DataStoreTemplate)
+
+local DataStore = DataStoreService:GetDataStore(Config.DataStore.Value)
+
+-- Variables Stuff
+local JobId = game.JobId
+
+local function ErrorHandler(ErrorMessage)
+	ErrorHandlerModule.Error(ErrorMessage)
+end
+
+local function AddValue(Value, ValueName, Parent)
+	if ValueName == "DataId" and (Parent:IsA("Player") and Parent:FindFirstChild("DataId")) then return end
+
+	local ValueInstance
+	local Type = typeof(Value)
+	if Type == "boolean" then
+		ValueInstance = Instance.new("BoolValue")
+	elseif Type == "string" then
+		ValueInstance = Instance.new("StringValue")
+	elseif Type == "number" then
+		ValueInstance = Instance.new("NumberValue")
+	else
+		ErrorHandler("Invalid_Data_Type")
+	end
+
+	ValueInstance.Name = ValueName
+	ValueInstance.Value = Value
+	ValueInstance.Parent = Parent
+end
+
+local function SubFolderCheck(FolderToCheck, ParentFolder)
+	for StatName, Stat in pairs(FolderToCheck) do
+		if typeof(Stat) == "table" then
+			local Folder = Instance.new("Folder", ParentFolder)
+			Folder.Name = StatName
+
+			SubFolderCheck(Stat, Folder)
+		else
+			AddValue(Stat, StatName, ParentFolder)
+		end
+	end
+end
+
+local function OnJoin(Player)
+	local Data
+	local Success, Error = pcall(function()
+		Data = DataStore:GetAsync(Player.UserId) or DataTemplate
+	end)
+	
+	if Success then
+		for StatName, Stat in pairs(Data) do
+			if typeof(Stat) ~= "table" then
+				AddValue(Stat, StatName, Player)
+			end
+		end
+
+		SubFolderCheck(Data, Player)
+	else
+		ErrorHandler(Error)
+	end
+end
+
+local function SerializeFolder(Folder)
+	local Data = {}
+
+	for _, Child in ipairs(Folder:GetChildren()) do
+		if Child:IsA("Folder") then
+			Data[Child.Name] = SerializeFolder(Child)
+		else
+			Data[Child.Name] = Child.Value
+		end
+	end
+
+	return Data
+end
+
+local function OnLeave(Player)
+	local DataToSave = {}
+
+	for FolderName, _ in pairs(DataTemplate) do
+		if FolderName ~= "Player" then
+			if Player:FindFirstChild(FolderName) then
+				DataToSave[FolderName] = SerializeFolder(Player[FolderName])
+			end
+		end
+	end
+
+	for i, PlayerValues in ipairs(Player:GetDescendants()) do 
+		if PlayerValues:IsA("NumberValue") and PlayerValues.Name == "DataId" then
+			DataToSave["DataId"] = PlayerValues.Value
+		end
+	end
+	
+	DataToSave["JobId"] = JobId
+
+	if not (next(DataToSave) == nil) then
+		local Success, Error = pcall(function()
+			return DataStore:UpdateAsync(Player.UserId, function(OldData)
+				local PreviousData = OldData or {DataId = 0}
+				
+				if not PreviousData.JobId or PreviousData.JobId == game.JobId then
+					if DataToSave.DataId == PreviousData.DataId then
+						DataToSave.DataId = DataToSave.DataId + 1
+						DataToSave.JobId = game.JobId
+						
+						if game:GetService("RunService"):IsStudio() then
+							warn("\n[SIMPLE SCRIPTS - DATASTORE]\nData Saved for "..Player.Name)
+						end
+						
+						return DataToSave
+					else
+						ErrorHandler("DataId_Mismatch")
+						return PreviousData
+					end
+				else
+					return PreviousData
+				end
+			end)
+		end)
+		
+		if not Success then
+			ErrorHandler(Error)
+		end
+	else
+		ErrorHandler("No_Data_Found")
+	end
+end
+
+PlayerService.PlayerAdded:Connect(OnJoin)
+PlayerService.PlayerRemoving:Connect(OnLeave)
